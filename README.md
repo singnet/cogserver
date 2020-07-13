@@ -1,4 +1,4 @@
-OpenCog CogServer
+test circle-ci OpenCog CogServer
 =================
 
 [![CircleCI](https://circleci.com/gh/opencog/cogserver.svg?style=svg)](https://circleci.com/gh/opencog/cogserver)
