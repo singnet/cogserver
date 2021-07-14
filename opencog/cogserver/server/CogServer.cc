@@ -12,7 +12,6 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#include <opencog/util/Config.h>
 #include <opencog/util/Logger.h>
 #include <opencog/util/misc.h>
 #include <opencog/util/platform.h>
@@ -49,7 +48,7 @@ CogServer::CogServer(AtomSpace* as) :
 void CogServer::enableNetworkServer(int port, int max_open_socks)
 {
     if (_networkServer) return;
-    _networkServer = new NetworkServer(config().get_int("SERVER_PORT", port));
+    _networkServer = new NetworkServer(port);
 
     ConsoleSocket::set_max_open_sockets(max_open_socks);
     auto make_console = [](void)->ConsoleSocket*
@@ -118,8 +117,18 @@ void CogServer::runLoopStep(void)
 
 // =============================================================
 // Singleton instance stuff.
+//
+// I don't really like singleton instances very much. There are some
+// interesting use cases where one might want to run multipel
+// cogservers. However, at this time, too much of the code (???)
+// assumes a singleton instance, so we leave this for now. XXX FIXME.
 
-static CogServer* serverInstance = nullptr;
+// The guile module needs to be able to delete this singleton.
+// So put it where the guile module can find it.
+namespace opencog
+{
+    CogServer* serverInstance = nullptr;
+};
 
 CogServer& opencog::cogserver(AtomSpace* as)
 {

@@ -39,7 +39,8 @@ private:
     static void init_in_module(void*);
     void init(void);
 
-    std::string start_server(AtomSpace*, const std::string&);
+    std::string start_server(AtomSpace*, int, const std::string&,
+                             const std::string&, const std::string&);
     std::string stop_server(void);
 
     CogServer* srvr = NULL;
@@ -105,27 +106,33 @@ void CogServerSCM::init()
 extern "C" {
 void opencog_cogserver_init(void)
 {
-    static CogServerSCM cogserver;
+    static CogServerSCM cogserver_bindings;
 }
 };
 
 // --------------------------------------------------------------
 
 std::string CogServerSCM::start_server(AtomSpace* as,
+                                       int port,
+                                       const std::string& prompt,
+                                       const std::string& scmprompt,
                                        const std::string& cfg)
 {
     static std::string rc;
+
     // Singleton instance. Maybe we should throw, here?
     if (srvr) { rc = "CogServer already running!"; return rc; }
 
-    // The default config file is installed from
-    // $SRCDIR/lib/cogserver.conf and is copied to
-    // /usr/local/etc/cogserver.conf
-    // by default. Use it if we can; it has sane file paths in it.
+    // Use the config file, if specified.
     if (0 < cfg.size())
+    {
         config().load(cfg.c_str(), true);
-    else
-        config().load("cogserver.conf", true);
+        port = config().get_int("SERVER_PORT", port);
+    }
+
+    // Pass parameters non-locally.
+    config().set("ANSI_PROMPT", prompt);
+    config().set("ANSI_SCM_PROMPT", scmprompt);
 
     srvr = &cogserver(as);
 
@@ -133,11 +140,18 @@ std::string CogServerSCM::start_server(AtomSpace* as,
     srvr->loadModules();
 
     // Enable the network server and run the server's main loop
-    srvr->enableNetworkServer();
+    srvr->enableNetworkServer(port);
     main_loop = new std::thread(&CogServer::serverLoop, srvr);
     rc = "Started CogServer";
     return rc;
 }
+
+
+namespace opencog
+{
+    // The singleton instance.
+    extern CogServer* serverInstance;
+};
 
 std::string CogServerSCM::stop_server(void)
 {
@@ -153,6 +167,7 @@ std::string CogServerSCM::stop_server(void)
     delete main_loop;
     delete srvr;
     srvr = NULL;
+    serverInstance = nullptr;
 
     rc = "Stopped CogServer";
     return rc;
